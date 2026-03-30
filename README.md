@@ -7,7 +7,8 @@ Small Python service for a Raspberry Pi that:
 3. fetches page context for each link,
 4. asks Gemini to turn that into an Obsidian-friendly note,
 5. writes a `.md` file with frontmatter into a local staging folder on the Pi,
-6. copies that note to iCloud Drive using `rclone`.
+6. uploads that note to iCloud Drive using `rclone`,
+7. moves it into your Obsidian iCloud app folder.
 
 ## What It Does
 
@@ -40,7 +41,7 @@ Small Python service for a Raspberry Pi that:
 - Install `rclone` on the Pi.
 - Run `rclone config`.
 - Create an iCloud Drive remote, for example `icloud`.
-- Choose the destination folder you want this bot to upload into and set `RCLONE_DESTINATION`, for example `icloud:Obsidian/Inbox`.
+- Choose the destination folder you want this bot to move notes into and set `RCLONE_DESTINATION`, for example `icloud:Obsidian/gabenotes`.
 
 This project assumes `rclone` is the only sync mechanism. Your Mac should just receive the resulting files through normal iCloud Drive sync.
 
@@ -64,14 +65,14 @@ obsidian-ai-bot
 - `DISCORD_ALLOWED_USER_IDS`: optional comma-separated allowlist.
 - `GEMINI_API_KEY`: required.
 - `GEMINI_MODEL`: required in practice; example is provided in `.env.example`.
-- `OBSIDIAN_OUTPUT_DIR`: required local staging folder on the Pi, for example `/home/pi/obsidian_ai/staging`.
+- `OBSIDIAN_OUTPUT_DIR`: required local staging folder on the Pi, for example `/home/gabe/obsidian_ai/staging`.
 - `STATE_PATH`: where processed Discord message IDs are stored.
 - `SYNC_STATE_PATH`: where pending `rclone` uploads are stored.
 - `STATIC_TAGS`: comma-separated tags added to every note.
 - `HTTP_TIMEOUT_SECONDS`: timeout for page fetches and Gemini API calls.
 - `RCLONE_COMMAND`: defaults to `rclone`.
 - `RCLONE_CONFIG_PATH`: optional explicit path to `rclone.conf`.
-- `RCLONE_DESTINATION`: required remote destination such as `icloud:Obsidian/Inbox`.
+- `RCLONE_DESTINATION`: required remote destination such as `icloud:Obsidian/gabenotes`.
 - `RCLONE_SYNC_INTERVAL_SECONDS`: how often the background retry loop runs.
 - `RCLONE_SYNC_TIMEOUT_SECONDS`: timeout for each `rclone copyto` attempt.
 
@@ -97,7 +98,8 @@ WantedBy=multi-user.target
 ## Sync Behavior
 
 - Notes are always written locally first.
-- The bot then tries an immediate `rclone copyto`.
+- The bot then uploads each note to a temporary root-level iCloud path.
+- After that upload succeeds, the bot moves the uploaded file into `RCLONE_DESTINATION`.
 - If that upload fails, the note remains in the local staging folder and is recorded in `SYNC_STATE_PATH`.
 - A background loop retries pending uploads on a fixed interval.
 - A Discord `✅` reaction means local write plus immediate sync succeeded.

@@ -22,6 +22,15 @@ def build_remote_path(destination: str, filename: str) -> str:
     return f"{destination}/{filename}"
 
 
+def build_staging_remote_path(destination: str, filename: str) -> str:
+    remote_name, _, remote_subpath = destination.partition(":")
+    if not remote_name:
+        raise ValueError("RCLONE_DESTINATION must include a remote name like 'icloud:Obsidian/gabenotes'")
+    if remote_subpath == "":
+        raise ValueError("RCLONE_DESTINATION must include a remote path after ':'")
+    return f"{remote_name}:.__obsidian_ai_staging__/{filename}"
+
+
 class RcloneSyncer:
     def __init__(
         self,
@@ -81,18 +90,53 @@ class RcloneSyncer:
             )
             return False
 
+        staging_remote_path = build_staging_remote_path(self._destination, local_path.name)
+        copy_result = await self._run_rclone(
+            "copyto",
+            str(local_path),
+            staging_remote_path,
+        )
+        if copy_result is not None:
+            self._store.update_attempt(
+                local_path=item.local_path,
+                attempt_count=item.attempt_count + 1,
+                last_attempted_at=_utc_now_iso(),
+                last_error=copy_result[:2000],
+            )
+            return False
+
+        move_result = await self._run_rclone(
+            "moveto",
+            staging_remote_path,
+            item.remote_path,
+        )
+        if move_result is None:
+            self._store.remove(item.local_path)
+            logger.info("Synced %s to %s", item.local_path, item.remote_path)
+            return True
+
+        self._store.update_attempt(
+            local_path=item.local_path,
+            attempt_count=item.attempt_count + 1,
+            last_attempted_at=_utc_now_iso(),
+            last_error=move_result[:2000],
+        )
+        logger.warning("Failed to sync %s: %s", item.local_path, move_result)
+        return False
+
+    async def _run_rclone(self, operation: str, source: str, target: str) -> str | None:
         command = [self._command]
         if self._config_path is not None:
             command.extend(["--config", str(self._config_path)])
         command.extend(
             [
-                "copyto",
+                operation,
                 "--retries",
                 "1",
                 "--low-level-retries",
                 "1",
-                str(local_path),
-                item.remote_path,
+                source,
+                target,
             ]
         )
 
@@ -106,30 +150,15 @@ class RcloneSyncer:
         except TimeoutError:
             process.kill()
             await process.wait()
-            self._store.update_attempt(
-                local_path=item.local_path,
-                attempt_count=item.attempt_count + 1,
-                last_attempted_at=_utc_now_iso(),
-                last_error=f"rclone timed out after {self._timeout_seconds:.0f}s",
-            )
-            return False
+            return f"rclone {operation} timed out after {self._timeout_seconds:.0f}s"
 
         if process.returncode == 0:
-            self._store.remove(item.local_path)
-            logger.info("Synced %s to %s", item.local_path, item.remote_path)
-            return True
+            return None
 
         error_parts = []
         if stdout:
             error_parts.append(stdout.decode("utf-8", errors="replace").strip())
         if stderr:
             error_parts.append(stderr.decode("utf-8", errors="replace").strip())
-        error_text = " | ".join(part for part in error_parts if part).strip() or f"rclone exited with {process.returncode}"
-        self._store.update_attempt(
-            local_path=item.local_path,
-            attempt_count=item.attempt_count + 1,
-            last_attempted_at=_utc_now_iso(),
-            last_error=error_text[:2000],
-        )
-        logger.warning("Failed to sync %s: %s", item.local_path, error_text)
-        return False
+        error_text = " | ".join(part for part in error_parts if part).strip()
+        return error_text or f"rclone {operation} exited with {process.returncode}"
