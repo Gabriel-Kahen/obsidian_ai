@@ -78,7 +78,10 @@ class GeminiClient:
         return parts[0]["text"]
 
     def _build_prompt(self, source: SourceContext) -> str:
-        source_label = "text note" if source.kind == "text" else "captured web link"
+        source_label = {
+            "text": "text note",
+            "x_post": "captured X post",
+        }.get(source.kind, "captured web link")
         return f"""
 Create one Obsidian-ready note from this {source_label}.
 
@@ -96,8 +99,11 @@ Rules:
 - Do not claim to have visited content that is not included below.
 - Prefer durable tags, not overly specific one-off tags.
 - The markdown body should be useful in Obsidian and can include sections like "Key Points", "Takeaway", or "Open Questions".
+- If this is an X post, include the post text explicitly in the markdown body and preserve the user's own note separately.
+- If this is an X post, include tags that make the source obvious, such as x-post or tweet, plus relevant topical tags.
 
 Source URL: {source.source_url or "none"}
+Source kind: {source.kind}
 Fetched title: {source.fetched_title or "none"}
 Site name: {source.site_name or "none"}
 Description: {source.description or "none"}

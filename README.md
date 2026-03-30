@@ -41,7 +41,7 @@ Small Python service for a Raspberry Pi that:
 - Install `rclone` on the Pi.
 - Run `rclone config`.
 - Create an iCloud Drive remote, for example `icloud`.
-- Choose the destination folder you want this bot to move notes into and set `RCLONE_DESTINATION`, for example `icloud:Obsidian/gabenotes`.
+- Choose the destination folder you want this bot to move notes into and set `RCLONE_DESTINATION`, for example `icloud:Obsidian/gabenotes/auto`.
 
 This project assumes `rclone` is the only sync mechanism. Your Mac should just receive the resulting files through normal iCloud Drive sync.
 
@@ -72,7 +72,7 @@ obsidian-ai-bot
 - `HTTP_TIMEOUT_SECONDS`: timeout for page fetches and Gemini API calls.
 - `RCLONE_COMMAND`: defaults to `rclone`.
 - `RCLONE_CONFIG_PATH`: optional explicit path to `rclone.conf`.
-- `RCLONE_DESTINATION`: required remote destination such as `icloud:Obsidian/gabenotes`.
+- `RCLONE_DESTINATION`: required remote destination such as `icloud:Obsidian/gabenotes/auto`.
 - `RCLONE_SYNC_INTERVAL_SECONDS`: how often the background retry loop runs.
 - `RCLONE_SYNC_TIMEOUT_SECONDS`: timeout for each `rclone copyto` attempt.
 
@@ -111,3 +111,4 @@ WantedBy=multi-user.target
 - PDFs, private pages, and login-gated pages are not deeply parsed here.
 - The Gemini output is constrained to JSON, but the note quality still depends on the source material.
 - This design depends on `rclone`'s iCloud Drive backend. It is the best Pi-only fit here, but it is still less predictable than mainstream backends like S3 or Dropbox.
+- X/Twitter support relies on metadata available in the public page response. It works best for public posts and may weaken when X changes its page metadata format.
