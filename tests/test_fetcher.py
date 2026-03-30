@@ -30,6 +30,7 @@ def test_extract_text_from_oembed_html_reads_post_text_and_handle() -> None:
         '&mdash; Gabe (@gabek) <a href="https://x.com/gabek/status/1?ref_src=twsrc%5Etfw">March 1, 2026</a>'
         "</blockquote>"
     )
-    post_text, author_handle = _extract_text_from_oembed_html(oembed_html)
+    post_text, author_handle, posted_at = _extract_text_from_oembed_html(oembed_html)
     assert post_text == "hello world"
     assert author_handle == "gabek"
+    assert posted_at == "March 1, 2026"

@@ -10,7 +10,7 @@ import httpx
 from obsidian_ai.config import Settings, load_settings
 from obsidian_ai.fetcher import fetch_source_context
 from obsidian_ai.gemini import GeminiClient
-from obsidian_ai.models import SourceContext
+from obsidian_ai.models import NoteDraft, SourceContext
 from obsidian_ai.parsing import build_message_payload
 from obsidian_ai.renderer import build_note_path, render_note
 from obsidian_ai.state import PendingSyncStore, ProcessedMessageStore
@@ -110,7 +110,19 @@ class DiscordObsidianClient(discord.Client):
         )
 
     async def _generate_and_write(self, source: SourceContext, payload) -> tuple[Path, bool]:
-        draft = await self.gemini.generate_note(source)
+        if source.kind == "x_post":
+            generated_tags = await self.gemini.generate_tags(source)
+            title = payload.note_text.strip() or (
+                f"X post by @{source.x_author_handle}" if source.x_author_handle else "X post"
+            )
+            draft = NoteDraft(
+                title=title,
+                tags=generated_tags,
+                summary="",
+                body_markdown=(source.x_post_text or source.description or "").strip(),
+            )
+        else:
+            draft = await self.gemini.generate_note(source)
         note_text = render_note(
             draft=draft,
             source=source,

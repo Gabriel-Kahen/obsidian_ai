@@ -37,7 +37,12 @@ def render_note(
     static_tags: list[str],
 ) -> str:
     created_value = message.created_at.isoformat()
-    all_tags = normalize_tags([*static_tags, *draft.tags])
+    x_tags = []
+    if source.kind == "x_post":
+        x_tags.append("x")
+        if source.x_author_handle:
+            x_tags.append(source.x_author_handle)
+    all_tags = normalize_tags([*x_tags, *draft.tags] if source.kind == "x_post" else [*static_tags, *draft.tags])
     frontmatter = [
         "---",
         f"title: {_yaml_escape(draft.title)}",
@@ -56,6 +61,27 @@ def render_note(
     for tag in all_tags:
         frontmatter.append(f"  - {tag}")
     frontmatter.append("---")
+
+    if source.kind == "x_post":
+        metadata_lines = []
+        if source.source_url:
+            metadata_lines.append(f"- Link: [{source.source_url}]({source.source_url})")
+        if source.x_author_handle:
+            metadata_lines.append(f"- Username: @{source.x_author_handle}")
+        metadata_lines.append(f"- Tweeted: {source.x_posted_at or 'Unknown'}")
+        metadata_lines.append(f"- Saved: {created_value}")
+
+        tweet_text = (source.x_post_text or source.description or "Tweet text unavailable.").strip()
+        sections = [
+            "\n".join(frontmatter),
+            f"# {draft.title}",
+            tweet_text,
+            "## Tags",
+            "\n".join([f"- {tag}" for tag in all_tags]),
+            "## Metadata",
+            "\n".join(metadata_lines),
+        ]
+        return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
 
     info_block = []
     if source.source_url:

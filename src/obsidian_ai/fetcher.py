@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import re
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
@@ -68,24 +70,25 @@ def _build_x_extracted_text(post_text: str | None, author_handle: str | None, no
     return "\n".join(lines)
 
 
-def _extract_text_from_oembed_html(oembed_html: str) -> tuple[str | None, str | None]:
+def _extract_text_from_oembed_html(oembed_html: str) -> tuple[str | None, str | None, str | None]:
     soup = BeautifulSoup(oembed_html, "html.parser")
     blockquote = soup.find("blockquote")
     paragraph = blockquote.find("p") if blockquote else None
     post_text = paragraph.get_text(" ", strip=True) if paragraph else None
 
     author_handle = None
+    posted_at = None
     if blockquote:
-        links = blockquote.find_all("a")
-        if len(links) >= 2:
-            author_link = links[-2]
-            author_text = author_link.get_text(" ", strip=True)
-            if author_text.startswith("@"):
-                author_handle = author_text[1:]
-            elif author_text:
-                author_handle = author_text
+        blockquote_text = blockquote.get_text(" ", strip=True)
+        handle_match = re.search(r"\(@([A-Za-z0-9_]+)\)", blockquote_text)
+        if handle_match:
+            author_handle = handle_match.group(1)
 
-    return post_text, author_handle
+        links = blockquote.find_all("a")
+        if links:
+            posted_at = links[-1].get_text(" ", strip=True) or None
+
+    return post_text, author_handle, posted_at
 
 
 async def _fetch_x_oembed_context(
@@ -112,7 +115,7 @@ async def _fetch_x_oembed_context(
             )
             response.raise_for_status()
             payload = response.json()
-            post_text, author_handle = _extract_text_from_oembed_html(payload.get("html", ""))
+            post_text, author_handle, posted_at = _extract_text_from_oembed_html(payload.get("html", ""))
             if not post_text:
                 continue
 
@@ -128,6 +131,9 @@ async def _fetch_x_oembed_context(
                 description=post_text,
                 extracted_text=_truncate(extracted_text, 8000),
                 note_text=note_text,
+                x_author_handle=author_handle,
+                x_posted_at=posted_at,
+                x_post_text=post_text,
             )
         except Exception as exc:  # noqa: BLE001
             last_error = exc
@@ -141,6 +147,9 @@ async def _fetch_x_oembed_context(
             description=None,
             extracted_text=_truncate(f"Failed to fetch X oEmbed content: {last_error}", 8000),
             note_text=note_text,
+            x_author_handle=None,
+            x_posted_at=None,
+            x_post_text=None,
         )
     return None
 
@@ -154,6 +163,8 @@ async def fetch_source_context(
     site_name = None
     description = None
     extracted_text = ""
+    post_text = None
+    author_handle = None
 
     try:
         if _is_x_post(url):
@@ -177,6 +188,8 @@ async def fetch_source_context(
             )
             site_name = _extract_meta(soup, "og:site_name")
             description = _extract_meta(soup, "description", "og:description", "twitter:description")
+            post_text = None
+            author_handle = None
             if _is_x_post(url):
                 post_text, author_handle = _extract_x_post_text(soup, url)
                 extracted_text = _build_x_extracted_text(post_text, author_handle, note_text)
@@ -195,4 +208,7 @@ async def fetch_source_context(
         description=description,
         extracted_text=_truncate(extracted_text, 8000),
         note_text=note_text,
+        x_author_handle=author_handle if _is_x_post(url) else None,
+        x_posted_at=None,
+        x_post_text=post_text if _is_x_post(url) else None,
     )

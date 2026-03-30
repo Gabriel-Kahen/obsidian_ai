@@ -20,6 +20,28 @@ class GeminiClient:
 
     async def generate_note(self, source: SourceContext) -> NoteDraft:
         prompt = self._build_prompt(source)
+        payload = await self._call_gemini(prompt)
+
+        title = str(payload.get("title", "")).strip() or "Untitled Note"
+        summary = str(payload.get("summary", "")).strip()
+        body_markdown = str(payload.get("body_markdown", "")).strip()
+        tags = normalize_tags([str(tag) for tag in payload.get("tags", [])])
+
+        if not body_markdown:
+            raise GeminiError("Gemini returned an empty body_markdown field")
+
+        return NoteDraft(
+            title=title,
+            tags=tags,
+            summary=summary,
+            body_markdown=body_markdown,
+        )
+
+    async def generate_tags(self, source: SourceContext) -> list[str]:
+        payload = await self._call_gemini(self._build_tag_prompt(source))
+        return normalize_tags([str(tag) for tag in payload.get("tags", [])])
+
+    async def _call_gemini(self, prompt: str) -> dict:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent"
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
@@ -48,24 +70,9 @@ class GeminiClient:
 
         text = self._extract_text(response.json())
         try:
-            payload = json.loads(text)
+            return json.loads(text)
         except json.JSONDecodeError as exc:
             raise GeminiError(f"Gemini did not return valid JSON: {text}") from exc
-
-        title = str(payload.get("title", "")).strip() or "Untitled Note"
-        summary = str(payload.get("summary", "")).strip()
-        body_markdown = str(payload.get("body_markdown", "")).strip()
-        tags = normalize_tags([str(tag) for tag in payload.get("tags", [])])
-
-        if not body_markdown:
-            raise GeminiError("Gemini returned an empty body_markdown field")
-
-        return NoteDraft(
-            title=title,
-            tags=tags,
-            summary=summary,
-            body_markdown=body_markdown,
-        )
 
     def _extract_text(self, payload: dict) -> str:
         candidates = payload.get("candidates") or []
@@ -106,6 +113,29 @@ Source URL: {source.source_url or "none"}
 Source kind: {source.kind}
 Fetched title: {source.fetched_title or "none"}
 Site name: {source.site_name or "none"}
+Description: {source.description or "none"}
+User note: {source.note_text or "none"}
+
+Extracted source text:
+{source.extracted_text or "No extracted text available."}
+""".strip()
+
+    def _build_tag_prompt(self, source: SourceContext) -> str:
+        return f"""
+Return JSON only with this exact shape:
+{{
+  "tags": ["string"]
+}}
+
+Rules:
+- Generate only topical or organizational tags.
+- Do not include generic source tags like x, tweet, or the author's username; those are added separately.
+- Be concise and factual.
+- Do not invent details not present in the source.
+
+Source URL: {source.source_url or "none"}
+Source kind: {source.kind}
+Fetched title: {source.fetched_title or "none"}
 Description: {source.description or "none"}
 User note: {source.note_text or "none"}
 
