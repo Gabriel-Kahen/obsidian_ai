@@ -1,4 +1,9 @@
-from obsidian_ai.fetcher import _build_x_extracted_text, _clean_x_description, _is_x_post
+from obsidian_ai.fetcher import (
+    _build_x_extracted_text,
+    _clean_x_description,
+    _extract_text_from_oembed_html,
+    _is_x_post,
+)
 
 
 def test_is_x_post_detects_status_urls() -> None:
@@ -17,3 +22,14 @@ def test_build_x_extracted_text_preserves_post_and_note() -> None:
     assert "Author handle: @gabe" in extracted
     assert "Post text: some post text" in extracted
     assert "User note: my comment" in extracted
+
+
+def test_extract_text_from_oembed_html_reads_post_text_and_handle() -> None:
+    oembed_html = (
+        '<blockquote class="twitter-tweet"><p lang="en" dir="ltr">hello world</p>'
+        '&mdash; Gabe (@gabek) <a href="https://x.com/gabek/status/1?ref_src=twsrc%5Etfw">March 1, 2026</a>'
+        "</blockquote>"
+    )
+    post_text, author_handle = _extract_text_from_oembed_html(oembed_html)
+    assert post_text == "hello world"
+    assert author_handle == "gabek"

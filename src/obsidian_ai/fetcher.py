@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
@@ -69,6 +68,83 @@ def _build_x_extracted_text(post_text: str | None, author_handle: str | None, no
     return "\n".join(lines)
 
 
+def _extract_text_from_oembed_html(oembed_html: str) -> tuple[str | None, str | None]:
+    soup = BeautifulSoup(oembed_html, "html.parser")
+    blockquote = soup.find("blockquote")
+    paragraph = blockquote.find("p") if blockquote else None
+    post_text = paragraph.get_text(" ", strip=True) if paragraph else None
+
+    author_handle = None
+    if blockquote:
+        links = blockquote.find_all("a")
+        if len(links) >= 2:
+            author_link = links[-2]
+            author_text = author_link.get_text(" ", strip=True)
+            if author_text.startswith("@"):
+                author_handle = author_text[1:]
+            elif author_text:
+                author_handle = author_text
+
+    return post_text, author_handle
+
+
+async def _fetch_x_oembed_context(
+    client: httpx.AsyncClient,
+    url: str,
+    note_text: str,
+) -> SourceContext | None:
+    endpoints = [
+        "https://publish.x.com/oembed",
+        "https://publish.twitter.com/oembed",
+    ]
+
+    last_error = None
+    for endpoint in endpoints:
+        try:
+            response = await client.get(
+                endpoint,
+                params={
+                    "url": url,
+                    "omit_script": "true",
+                    "dnt": "true",
+                },
+                headers={"User-Agent": USER_AGENT},
+            )
+            response.raise_for_status()
+            payload = response.json()
+            post_text, author_handle = _extract_text_from_oembed_html(payload.get("html", ""))
+            if not post_text:
+                continue
+
+            extracted_text = _build_x_extracted_text(post_text, author_handle, note_text)
+            title = payload.get("author_name") or payload.get("title")
+            if not title:
+                title = f"X post by @{author_handle}" if author_handle else "X post"
+            return SourceContext(
+                kind="x_post",
+                source_url=url,
+                fetched_title=str(title).strip() if title else "X post",
+                site_name="X",
+                description=post_text,
+                extracted_text=_truncate(extracted_text, 8000),
+                note_text=note_text,
+            )
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+
+    if last_error is not None:
+        return SourceContext(
+            kind="x_post",
+            source_url=url,
+            fetched_title="X post",
+            site_name="X",
+            description=None,
+            extracted_text=_truncate(f"Failed to fetch X oEmbed content: {last_error}", 8000),
+            note_text=note_text,
+        )
+    return None
+
+
 async def fetch_source_context(
     client: httpx.AsyncClient,
     url: str,
@@ -80,6 +156,11 @@ async def fetch_source_context(
     extracted_text = ""
 
     try:
+        if _is_x_post(url):
+            x_context = await _fetch_x_oembed_context(client, url, note_text)
+            if x_context is not None and "Failed to fetch X oEmbed content:" not in x_context.extracted_text:
+                return x_context
+
         response = await client.get(
             url,
             follow_redirects=True,
