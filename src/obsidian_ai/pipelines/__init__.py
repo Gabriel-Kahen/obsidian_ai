@@ -6,6 +6,7 @@ from obsidian_ai.models import MessagePayload, NoteDraft, SourceContext
 
 from . import generic_links
 from . import x_posts
+from . import youtube_links
 
 
 class LinkPipeline(Protocol):
@@ -18,6 +19,7 @@ class LinkPipeline(Protocol):
 
 REGISTERED_LINK_PIPELINES: tuple[LinkPipeline, ...] = (
     x_posts,
+    youtube_links,
     generic_links,
 )
 
