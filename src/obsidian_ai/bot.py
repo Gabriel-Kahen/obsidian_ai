@@ -112,14 +112,13 @@ class DiscordObsidianClient(discord.Client):
     async def _generate_and_write(self, source: SourceContext, payload) -> tuple[Path, bool]:
         if source.kind == "x_post":
             generated_tags = await self.gemini.generate_tags(source)
-            title = payload.note_text.strip() or (
-                f"X post by @{source.x_author_handle}" if source.x_author_handle else "X post"
-            )
+            tweet_text = (source.x_post_text or source.description or "").strip()
+            title = payload.note_text.strip() or tweet_text or "X post"
             draft = NoteDraft(
                 title=title,
                 tags=generated_tags,
                 summary="",
-                body_markdown=(source.x_post_text or source.description or "").strip(),
+                body_markdown=tweet_text if payload.note_text.strip() else "",
             )
         else:
             draft = await self.gemini.generate_note(source)
