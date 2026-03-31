@@ -43,23 +43,6 @@ def build_note_path(output_dir: Path, created_at: datetime, title: str) -> Path:
     return _unique_path(output_dir / filename)
 
 
-def build_title_based_note_path(output_dir: Path, title: str) -> Path:
-    slug = _bounded_slug(title)
-    filename = f"{slug}.md"
-    return _unique_path(output_dir / filename)
-
-
-def build_x_note_path(output_dir: Path, tweet_text: str, handle: str | None) -> Path:
-    prefix = _first_n_words(tweet_text, 5)
-    if handle:
-        filename_basis = f"{prefix} {handle}".strip()
-    else:
-        filename_basis = prefix
-    slug = _bounded_slug(filename_basis, fallback="x-post")
-    filename = f"{slug}.md"
-    return _unique_path(output_dir / filename)
-
-
 def render_note(
     draft: NoteDraft,
     source: SourceContext,
@@ -67,35 +50,7 @@ def render_note(
     static_tags: list[str],
 ) -> str:
     created_value = message.created_at.isoformat()
-    x_tags = []
-    if source.kind == "x_post":
-        x_tags.append("x")
-        if source.x_author_name:
-            x_tags.append(source.x_author_name)
-        if source.x_author_handle:
-            x_tags.append(source.x_author_handle)
-    all_tags = normalize_tags([*x_tags, *draft.tags] if source.kind == "x_post" else [*static_tags, *draft.tags])
-
-    if source.kind == "x_post":
-        frontmatter = [
-            "---",
-            f"link: {_yaml_escape(source.source_url or '')}",
-            f"username: {_yaml_escape(source.x_author_name or '')}",
-            f"handle: {_yaml_escape(source.x_author_handle or '')}",
-            f"tweeted: {_yaml_escape(source.x_posted_at or 'Unknown')}",
-            f"saved: {_yaml_escape(created_value)}",
-            "tags:",
-        ]
-        for tag in all_tags:
-            frontmatter.append(f"  - {tag}")
-        frontmatter.append("---")
-
-        body_text = (draft.body_markdown or source.x_post_text or source.description or "").strip()
-        sections = ["\n".join(frontmatter)]
-        if body_text:
-            sections.append(body_text)
-        return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
-
+    all_tags = normalize_tags([*static_tags, *draft.tags])
     frontmatter = [
         "---",
         f"title: {_yaml_escape(draft.title)}",

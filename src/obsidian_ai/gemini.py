@@ -37,9 +37,9 @@ class GeminiClient:
             body_markdown=body_markdown,
         )
 
-    async def generate_tags(self, source: SourceContext) -> list[str]:
+    async def generate_tags(self, source: SourceContext, max_tags: int = 2) -> list[str]:
         payload = await self._call_gemini(self._build_tag_prompt(source))
-        return normalize_tags([str(tag) for tag in payload.get("tags", [])])
+        return normalize_tags([str(tag) for tag in payload.get("tags", [])])[:max_tags]
 
     async def _call_gemini(self, prompt: str) -> dict:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent"
@@ -129,6 +129,7 @@ Return JSON only with this exact shape:
 
 Rules:
 - Generate only topical or organizational tags.
+- Return at most 2 tags.
 - Do not include generic source tags like x, tweet, or the author's username; those are added separately.
 - Prefer broader category or intent tags over literal object words from the post.
 - If the post is intended to be humorous, absurd, or a joke, include the tag "funny".

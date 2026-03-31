@@ -10,9 +10,10 @@ import httpx
 from obsidian_ai.config import Settings, load_settings
 from obsidian_ai.fetcher import fetch_source_context
 from obsidian_ai.gemini import GeminiClient
-from obsidian_ai.models import NoteDraft, SourceContext
+from obsidian_ai.models import SourceContext
+from obsidian_ai.pipelines import resolve_link_pipeline
 from obsidian_ai.parsing import build_message_payload
-from obsidian_ai.renderer import build_note_path, build_x_note_path, render_note
+from obsidian_ai.renderer import build_note_path, render_note
 from obsidian_ai.state import PendingSyncStore, ProcessedMessageStore
 from obsidian_ai.sync import RcloneSyncer
 
@@ -78,8 +79,17 @@ class DiscordObsidianClient(discord.Client):
             async with httpx.AsyncClient(timeout=self.settings.http_timeout_seconds) as http_client:
                 if payload.urls:
                     for url in payload.urls:
-                        source = await fetch_source_context(http_client, url, payload.note_text)
-                        file_path, sync_succeeded = await self._generate_and_write(source, payload)
+                        pipeline = resolve_link_pipeline(url)
+                        if pipeline is not None:
+                            source = await pipeline.fetch_source_context(http_client, url, payload.note_text)
+                            file_path, sync_succeeded = await self._generate_and_write_pipeline(
+                                pipeline,
+                                source,
+                                payload,
+                            )
+                        else:
+                            source = await fetch_source_context(http_client, url, payload.note_text)
+                            file_path, sync_succeeded = await self._generate_and_write(source, payload)
                         written_files.append(str(file_path))
                         sync_all_succeeded = sync_all_succeeded and sync_succeeded
                 else:
@@ -110,33 +120,22 @@ class DiscordObsidianClient(discord.Client):
         )
 
     async def _generate_and_write(self, source: SourceContext, payload) -> tuple[Path, bool]:
-        if source.kind == "x_post":
-            generated_tags = await self.gemini.generate_tags(source)
-            tweet_text = (source.x_post_text or source.description or "").strip()
-            title = payload.note_text.strip() or tweet_text or "X post"
-            draft = NoteDraft(
-                title=title,
-                tags=generated_tags,
-                summary="",
-                body_markdown=tweet_text,
-            )
-        else:
-            draft = await self.gemini.generate_note(source)
+        draft = await self.gemini.generate_note(source)
         note_text = render_note(
             draft=draft,
             source=source,
             message=payload,
             static_tags=self.settings.static_tags,
         )
-        path = (
-            build_x_note_path(
-                self.settings.obsidian_output_dir,
-                source.x_post_text or source.description or draft.title,
-                source.x_author_handle,
-            )
-            if source.kind == "x_post"
-            else build_note_path(self.settings.obsidian_output_dir, payload.created_at, draft.title)
-        )
+        path = build_note_path(self.settings.obsidian_output_dir, payload.created_at, draft.title)
+        path.write_text(note_text, encoding="utf-8")
+        sync_succeeded = await self.syncer.enqueue_and_sync(path, payload.message_id, source.source_url)
+        return path, sync_succeeded
+
+    async def _generate_and_write_pipeline(self, pipeline, source: SourceContext, payload) -> tuple[Path, bool]:
+        draft = await pipeline.build_note_draft(self.gemini, source)
+        note_text = pipeline.render_note(draft, source, payload)
+        path = pipeline.build_note_path(self.settings.obsidian_output_dir, source)
         path.write_text(note_text, encoding="utf-8")
         sync_succeeded = await self.syncer.enqueue_and_sync(path, payload.message_id, source.source_url)
         return path, sync_succeeded
