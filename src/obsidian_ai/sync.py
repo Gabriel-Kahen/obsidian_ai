@@ -115,6 +115,7 @@ class RcloneSyncer:
             logger.info("Synced %s to %s", item.local_path, item.remote_path)
             return True
 
+        await self._best_effort_delete(staging_remote_path)
         self._store.update_attempt(
             local_path=item.local_path,
             attempt_count=item.attempt_count + 1,
@@ -128,17 +129,9 @@ class RcloneSyncer:
         command = [self._command]
         if self._config_path is not None:
             command.extend(["--config", str(self._config_path)])
-        command.extend(
-            [
-                operation,
-                "--retries",
-                "1",
-                "--low-level-retries",
-                "1",
-                source,
-                target,
-            ]
-        )
+        command.extend([operation, "--retries", "1", "--low-level-retries", "1", source])
+        if target:
+            command.append(target)
 
         process = await asyncio.create_subprocess_exec(
             *command,
@@ -162,3 +155,8 @@ class RcloneSyncer:
             error_parts.append(stderr.decode("utf-8", errors="replace").strip())
         error_text = " | ".join(part for part in error_parts if part).strip()
         return error_text or f"rclone {operation} exited with {process.returncode}"
+
+    async def _best_effort_delete(self, target: str) -> None:
+        result = await self._run_rclone("deletefile", target, "")
+        if result is not None:
+            logger.debug("Could not clean staging file %s: %s", target, result)
