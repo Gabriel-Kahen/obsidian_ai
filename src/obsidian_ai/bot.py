@@ -24,6 +24,10 @@ logging.basicConfig(
 logger = logging.getLogger("obsidian_ai")
 
 
+def is_allowed_webhook_message(message: discord.Message, settings: Settings) -> bool:
+    return message.webhook_id is not None and message.webhook_id in settings.discord_allowed_webhook_ids
+
+
 class DiscordObsidianClient(discord.Client):
     def __init__(self, settings: Settings) -> None:
         intents = discord.Intents.default()
@@ -54,7 +58,8 @@ class DiscordObsidianClient(discord.Client):
             self._sync_task = asyncio.create_task(self._sync_loop())
 
     async def on_message(self, message: discord.Message) -> None:
-        if message.author.bot:
+        allowed_webhook_message = is_allowed_webhook_message(message, self.settings)
+        if message.author.bot and not allowed_webhook_message:
             return
         if self.user and message.author.id == self.user.id:
             return
@@ -64,7 +69,11 @@ class DiscordObsidianClient(discord.Client):
             return
         if self.settings.discord_allowed_channel_ids and message.channel.id not in self.settings.discord_allowed_channel_ids:
             return
-        if self.settings.discord_allowed_user_ids and message.author.id not in self.settings.discord_allowed_user_ids:
+        if (
+            not allowed_webhook_message
+            and self.settings.discord_allowed_user_ids
+            and message.author.id not in self.settings.discord_allowed_user_ids
+        ):
             return
         if self.store.has(message.id):
             return

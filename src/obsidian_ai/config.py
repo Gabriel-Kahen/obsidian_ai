@@ -33,6 +33,7 @@ class Settings:
     discord_allowed_guild_ids: set[int]
     discord_allowed_channel_ids: set[int]
     discord_allowed_user_ids: set[int]
+    discord_allowed_webhook_ids: set[int]
     gemini_api_key: str
     gemini_model: str
     obsidian_output_dir: Path
@@ -80,6 +81,7 @@ def load_settings() -> Settings:
         discord_allowed_guild_ids=_parse_int_set("DISCORD_ALLOWED_GUILD_IDS"),
         discord_allowed_channel_ids=_parse_int_set("DISCORD_ALLOWED_CHANNEL_IDS"),
         discord_allowed_user_ids=_parse_int_set("DISCORD_ALLOWED_USER_IDS"),
+        discord_allowed_webhook_ids=_parse_int_set("DISCORD_ALLOWED_WEBHOOK_IDS"),
         gemini_api_key=gemini_api_key,
         gemini_model=gemini_model,
         obsidian_output_dir=Path(obsidian_output_dir_raw).expanduser(),
