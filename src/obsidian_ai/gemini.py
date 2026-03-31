@@ -128,10 +128,14 @@ Return JSON only with this exact shape:
 }}
 
 Rules:
-- Generate only topical or organizational tags.
+- Generate only broad topical or organizational tags.
+- Usually return exactly 1 tag.
+- Return a second tag only when the source clearly spans two distinct high-level categories.
 - Return at most 2 tags.
 - Do not include generic source tags like x, tweet, or the author's username; those are added separately.
-- Prefer broader category or intent tags over literal object words from the post.
+- Prefer category or intent tags like ai, funny, politics, design, psychology, productivity, art, or philosophy.
+- Do not use literal object words, named entities, quotes, or low-level subject matter from the post as tags.
+- Avoid micro-topic tags like peanut-butter, vape, idea, or evaluation unless they are genuinely the broad category.
 - If the post is intended to be humorous, absurd, or a joke, include the tag "funny".
 - Avoid low-signal noun tags copied directly from the tweet unless they clearly represent the broader category.
 - Be concise and factual.
