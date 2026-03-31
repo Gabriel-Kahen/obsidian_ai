@@ -43,6 +43,7 @@ class DiscordObsidianClient(discord.Client):
             destination=settings.rclone_destination,
             timeout_seconds=settings.rclone_sync_timeout_seconds,
             store=self.sync_store,
+            output_root=settings.obsidian_output_dir,
         )
         self._sync_task: asyncio.Task | None = None
         self.settings.obsidian_output_dir.mkdir(parents=True, exist_ok=True)
@@ -128,6 +129,7 @@ class DiscordObsidianClient(discord.Client):
             static_tags=self.settings.static_tags,
         )
         path = build_note_path(self.settings.obsidian_output_dir, payload.created_at, draft.title)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(note_text, encoding="utf-8")
         sync_succeeded = await self.syncer.enqueue_and_sync(path, payload.message_id, source.source_url)
         return path, sync_succeeded
@@ -136,6 +138,7 @@ class DiscordObsidianClient(discord.Client):
         draft = await pipeline.build_note_draft(self.gemini, source)
         note_text = pipeline.render_note(draft, source, payload)
         path = pipeline.build_note_path(self.settings.obsidian_output_dir, source)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(note_text, encoding="utf-8")
         sync_succeeded = await self.syncer.enqueue_and_sync(path, payload.message_id, source.source_url)
         return path, sync_succeeded

@@ -133,7 +133,7 @@ def build_note_path(output_dir: Path, source: SourceContext) -> Path:
     title = source.fetched_title or "youtube-link"
     channel = source.site_name or "youtube"
     filename = f"{_bounded_slug(f'{title} - {channel}')}.md"
-    return _unique_path(output_dir / filename)
+    return _unique_path(output_dir / "youtube" / filename)
 
 
 def render_note(draft: NoteDraft, source: SourceContext, message: MessagePayload) -> str:

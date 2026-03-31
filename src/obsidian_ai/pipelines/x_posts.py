@@ -262,14 +262,13 @@ def build_note_path(output_dir: Path, source: SourceContext) -> Path:
     prefix = _first_n_words(tweet_text, 5)
     filename_basis = f"{prefix} {source.x_author_handle or ''}".strip()
     slug = _bounded_slug(filename_basis, fallback="x-post")
-    return _unique_path(output_dir / f"{slug}.md")
+    return _unique_path(output_dir / "x" / f"{slug}.md")
 
 
 def render_note(draft: NoteDraft, source: SourceContext, message: MessagePayload) -> str:
     created_value = message.created_at.isoformat()
     tags = normalize_tags(
         [
-            "x",
             source.x_author_handle or "",
             *draft.tags,
         ]

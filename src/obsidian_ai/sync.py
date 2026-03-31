@@ -15,20 +15,20 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def build_remote_path(destination: str, filename: str) -> str:
+def build_remote_path(destination: str, relative_path: str) -> str:
     destination = destination.rstrip("/")
     if not destination:
         raise ValueError("RCLONE_DESTINATION cannot be empty")
-    return f"{destination}/{filename}"
+    return f"{destination}/{relative_path.lstrip('/')}"
 
 
-def build_staging_remote_path(destination: str, filename: str) -> str:
+def build_staging_remote_path(destination: str, relative_path: str) -> str:
     remote_name, _, remote_subpath = destination.partition(":")
     if not remote_name:
         raise ValueError("RCLONE_DESTINATION must include a remote name like 'icloud:Obsidian/gabenotes'")
     if remote_subpath == "":
         raise ValueError("RCLONE_DESTINATION must include a remote path after ':'")
-    return f"{remote_name}:.__obsidian_ai_staging__/{filename}"
+    return f"{remote_name}:.__obsidian_ai_staging__/{relative_path.lstrip('/')}"
 
 
 class RcloneSyncer:
@@ -38,6 +38,7 @@ class RcloneSyncer:
         destination: str,
         timeout_seconds: float,
         store: PendingSyncStore,
+        output_root: Path,
         config_path: Path | None = None,
     ) -> None:
         self._command = command
@@ -46,11 +47,16 @@ class RcloneSyncer:
         self._config_path = config_path
         self._store = store
         self._lock = asyncio.Lock()
+        self._output_root = output_root
 
     async def enqueue(self, local_path: Path, message_id: int, source_url: str | None) -> None:
+        try:
+            relative_remote_path = local_path.relative_to(self._output_root).as_posix()
+        except ValueError:
+            relative_remote_path = local_path.name
         item = PendingSync(
             local_path=str(local_path),
-            remote_path=build_remote_path(self._destination, local_path.name),
+            remote_path=build_remote_path(self._destination, relative_remote_path),
             message_id=message_id,
             source_url=source_url,
             enqueued_at=_utc_now_iso(),
@@ -90,7 +96,11 @@ class RcloneSyncer:
             )
             return False
 
-        staging_remote_path = build_staging_remote_path(self._destination, local_path.name)
+        try:
+            relative_remote_path = local_path.relative_to(self._output_root).as_posix()
+        except ValueError:
+            relative_remote_path = local_path.name
+        staging_remote_path = build_staging_remote_path(self._destination, relative_remote_path)
         copy_result = await self._run_rclone(
             "copyto",
             str(local_path),
