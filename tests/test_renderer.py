@@ -54,3 +54,10 @@ def test_render_x_post_uses_minimal_properties_and_body() -> None:
 def test_build_title_based_note_path_uses_title_slug(tmp_path) -> None:
     path = build_title_based_note_path(tmp_path, "just thought of a peanut butter vape")
     assert path.name == "just-thought-of-a-peanut-butter-vape.md"
+
+
+def test_build_title_based_note_path_clips_long_titles(tmp_path) -> None:
+    long_title = "i think the how many r s are in the word strawberry is a sort of optical illusion " * 4
+    path = build_title_based_note_path(tmp_path, long_title)
+    assert len(path.name) < 150
+    assert path.suffix == ".md"

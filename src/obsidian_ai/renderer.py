@@ -6,6 +6,8 @@ from pathlib import Path
 from obsidian_ai.models import MessagePayload, NoteDraft, SourceContext
 from obsidian_ai.parsing import normalize_tags, slugify
 
+MAX_FILENAME_SLUG_LENGTH = 96
+
 
 def _yaml_escape(value: str) -> str:
     escaped = value.replace("\\", "\\\\").replace('"', '\\"')
@@ -24,14 +26,20 @@ def _unique_path(path: Path) -> Path:
         counter += 1
 
 
+def _bounded_slug(title: str, fallback: str = "note") -> str:
+    slug = slugify(title, fallback=fallback)
+    bounded = slug[:MAX_FILENAME_SLUG_LENGTH].rstrip("-")
+    return bounded or fallback
+
+
 def build_note_path(output_dir: Path, created_at: datetime, title: str) -> Path:
-    slug = slugify(title)
+    slug = _bounded_slug(title)
     filename = f"{created_at.strftime('%Y%m%d-%H%M%S')}-{slug}.md"
     return _unique_path(output_dir / filename)
 
 
 def build_title_based_note_path(output_dir: Path, title: str) -> Path:
-    slug = slugify(title)
+    slug = _bounded_slug(title)
     filename = f"{slug}.md"
     return _unique_path(output_dir / filename)
 
