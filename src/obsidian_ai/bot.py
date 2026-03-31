@@ -28,6 +28,10 @@ def is_allowed_webhook_message(message: discord.Message, settings: Settings) -> 
     return message.webhook_id is not None and message.webhook_id in settings.discord_allowed_webhook_ids
 
 
+def is_allowed_bot_message(message: discord.Message, settings: Settings) -> bool:
+    return message.author.bot and message.author.id in settings.discord_allowed_bot_ids
+
+
 class DiscordObsidianClient(discord.Client):
     def __init__(self, settings: Settings) -> None:
         intents = discord.Intents.default()
@@ -59,7 +63,8 @@ class DiscordObsidianClient(discord.Client):
 
     async def on_message(self, message: discord.Message) -> None:
         allowed_webhook_message = is_allowed_webhook_message(message, self.settings)
-        if message.author.bot and not allowed_webhook_message:
+        allowed_bot_message = is_allowed_bot_message(message, self.settings)
+        if message.author.bot and not allowed_webhook_message and not allowed_bot_message:
             return
         if self.user and message.author.id == self.user.id:
             return
@@ -71,6 +76,7 @@ class DiscordObsidianClient(discord.Client):
             return
         if (
             not allowed_webhook_message
+            and not allowed_bot_message
             and self.settings.discord_allowed_user_ids
             and message.author.id not in self.settings.discord_allowed_user_ids
         ):
