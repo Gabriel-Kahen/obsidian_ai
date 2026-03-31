@@ -4,6 +4,7 @@ from typing import Protocol
 
 from obsidian_ai.models import MessagePayload, NoteDraft, SourceContext
 
+from . import generic_links
 from . import x_posts
 
 
@@ -15,7 +16,10 @@ class LinkPipeline(Protocol):
     def render_note(self, draft: NoteDraft, source: SourceContext, message: MessagePayload) -> str: ...
 
 
-REGISTERED_LINK_PIPELINES: tuple[LinkPipeline, ...] = (x_posts,)
+REGISTERED_LINK_PIPELINES: tuple[LinkPipeline, ...] = (
+    x_posts,
+    generic_links,
+)
 
 
 def resolve_link_pipeline(url: str) -> LinkPipeline | None:

@@ -14,6 +14,7 @@ class MessagePayload:
     created_at: datetime
     raw_content: str
     note_text: str
+    user_tags: list[str]
     urls: list[str]
 
 

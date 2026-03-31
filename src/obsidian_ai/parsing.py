@@ -6,6 +6,7 @@ import unicodedata
 from obsidian_ai.models import MessagePayload
 
 URL_PATTERN = re.compile(r"https?://[^\s<>]+")
+TAG_PATTERN = re.compile(r"(?<!\S)#([A-Za-z0-9][A-Za-z0-9_-]*)")
 
 
 def extract_urls(text: str) -> list[str]:
@@ -19,6 +20,15 @@ def extract_urls(text: str) -> list[str]:
 def strip_urls(text: str) -> str:
     without_urls = URL_PATTERN.sub(" ", text)
     return " ".join(without_urls.split())
+
+
+def extract_tags(text: str) -> list[str]:
+    return [match.group(1) for match in TAG_PATTERN.finditer(text)]
+
+
+def strip_tags(text: str) -> str:
+    without_tags = TAG_PATTERN.sub(" ", text)
+    return " ".join(without_tags.split())
 
 
 def slugify(value: str, fallback: str = "note") -> str:
@@ -45,7 +55,9 @@ def build_message_payload(message) -> MessagePayload | None:
     urls = extract_urls(raw_content)
     urls.extend(url for url in attachment_urls if url not in urls)
 
-    note_text = strip_urls(raw_content)
+    text_without_urls = strip_urls(raw_content)
+    user_tags = normalize_tags(extract_tags(text_without_urls))
+    note_text = strip_tags(text_without_urls)
     if not urls and not note_text:
         return None
 
@@ -58,5 +70,6 @@ def build_message_payload(message) -> MessagePayload | None:
         created_at=message.created_at,
         raw_content=raw_content,
         note_text=note_text,
+        user_tags=user_tags,
         urls=urls,
     )
