@@ -27,6 +27,7 @@ class SourceContext:
     extracted_text: str
     note_text: str
     x_author_handle: str | None = None
+    x_author_name: str | None = None
     x_posted_at: str | None = None
     x_post_text: str | None = None
 

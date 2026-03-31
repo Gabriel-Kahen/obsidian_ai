@@ -132,6 +132,7 @@ async def _fetch_x_oembed_context(
                 extracted_text=_truncate(extracted_text, 8000),
                 note_text=note_text,
                 x_author_handle=author_handle,
+                x_author_name=str(payload.get("author_name", "")).strip() or None,
                 x_posted_at=posted_at,
                 x_post_text=post_text,
             )
@@ -148,6 +149,7 @@ async def _fetch_x_oembed_context(
             extracted_text=_truncate(f"Failed to fetch X oEmbed content: {last_error}", 8000),
             note_text=note_text,
             x_author_handle=None,
+            x_author_name=None,
             x_posted_at=None,
             x_post_text=None,
         )
@@ -209,6 +211,7 @@ async def fetch_source_context(
         extracted_text=_truncate(extracted_text, 8000),
         note_text=note_text,
         x_author_handle=author_handle if _is_x_post(url) else None,
+        x_author_name=None,
         x_posted_at=None,
         x_post_text=post_text if _is_x_post(url) else None,
     )

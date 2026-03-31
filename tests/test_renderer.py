@@ -20,6 +20,7 @@ def test_render_x_post_uses_minimal_properties_and_body() -> None:
         extracted_text="Source type: X post",
         note_text="my note",
         x_author_handle="gabek",
+        x_author_name="Gabe",
         x_posted_at="March 30, 2026",
         x_post_text="tweet body",
     )
@@ -38,14 +39,16 @@ def test_render_x_post_uses_minimal_properties_and_body() -> None:
     rendered = render_note(draft, source, message, static_tags=["inbox"])
 
     assert 'link: "https://x.com/gabek/status/1"' in rendered
-    assert 'username: "gabek"' in rendered
+    assert 'username: "Gabe"' in rendered
+    assert 'handle: "gabek"' in rendered
     assert 'tweeted: "March 30, 2026"' in rendered
     assert 'saved: "2026-03-30T23:59:36+00:00"' in rendered
     assert "  - x" in rendered
+    assert "  - gabe" in rendered
     assert "  - gabek" in rendered
     assert "  - intrusive-thoughts" in rendered
-    assert "# my note" in rendered
-    assert "tweet body" in rendered
+    assert "# my note" not in rendered
+    assert rendered.startswith("tweet body\n\n---")
     assert "## Tags" not in rendered
     assert "## Metadata" not in rendered
     assert 'title: "' not in rendered

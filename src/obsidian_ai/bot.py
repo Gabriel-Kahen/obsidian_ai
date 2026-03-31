@@ -118,7 +118,7 @@ class DiscordObsidianClient(discord.Client):
                 title=title,
                 tags=generated_tags,
                 summary="",
-                body_markdown=tweet_text if payload.note_text.strip() else "",
+                body_markdown=tweet_text,
             )
         else:
             draft = await self.gemini.generate_note(source)

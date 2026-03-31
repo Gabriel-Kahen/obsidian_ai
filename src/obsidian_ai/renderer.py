@@ -54,6 +54,8 @@ def render_note(
     x_tags = []
     if source.kind == "x_post":
         x_tags.append("x")
+        if source.x_author_name:
+            x_tags.append(source.x_author_name)
         if source.x_author_handle:
             x_tags.append(source.x_author_handle)
     all_tags = normalize_tags([*x_tags, *draft.tags] if source.kind == "x_post" else [*static_tags, *draft.tags])
@@ -62,7 +64,8 @@ def render_note(
         frontmatter = [
             "---",
             f"link: {_yaml_escape(source.source_url or '')}",
-            f"username: {_yaml_escape(source.x_author_handle or '')}",
+            f"username: {_yaml_escape(source.x_author_name or '')}",
+            f"handle: {_yaml_escape(source.x_author_handle or '')}",
             f"tweeted: {_yaml_escape(source.x_posted_at or 'Unknown')}",
             f"saved: {_yaml_escape(created_value)}",
             "tags:",
@@ -71,12 +74,8 @@ def render_note(
             frontmatter.append(f"  - {tag}")
         frontmatter.append("---")
 
-        sections = [
-            "\n".join(frontmatter),
-            f"# {draft.title}",
-        ]
-        if draft.body_markdown.strip():
-            sections.append(draft.body_markdown.strip())
+        body_text = (draft.body_markdown or source.x_post_text or source.description or "").strip()
+        sections = [body_text, "\n".join(frontmatter)] if body_text else ["\n".join(frontmatter)]
         return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
 
     frontmatter = [
