@@ -12,7 +12,7 @@ from obsidian_ai.fetcher import fetch_source_context
 from obsidian_ai.gemini import GeminiClient
 from obsidian_ai.models import NoteDraft, SourceContext
 from obsidian_ai.parsing import build_message_payload
-from obsidian_ai.renderer import build_note_path, build_title_based_note_path, render_note
+from obsidian_ai.renderer import build_note_path, build_x_note_path, render_note
 from obsidian_ai.state import PendingSyncStore, ProcessedMessageStore
 from obsidian_ai.sync import RcloneSyncer
 
@@ -129,7 +129,11 @@ class DiscordObsidianClient(discord.Client):
             static_tags=self.settings.static_tags,
         )
         path = (
-            build_title_based_note_path(self.settings.obsidian_output_dir, draft.title)
+            build_x_note_path(
+                self.settings.obsidian_output_dir,
+                source.x_post_text or source.description or draft.title,
+                source.x_author_handle,
+            )
             if source.kind == "x_post"
             else build_note_path(self.settings.obsidian_output_dir, payload.created_at, draft.title)
         )

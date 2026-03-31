@@ -32,6 +32,11 @@ def _bounded_slug(title: str, fallback: str = "note") -> str:
     return bounded or fallback
 
 
+def _first_n_words(value: str, limit: int) -> str:
+    words = value.split()
+    return " ".join(words[:limit]).strip()
+
+
 def build_note_path(output_dir: Path, created_at: datetime, title: str) -> Path:
     slug = _bounded_slug(title)
     filename = f"{created_at.strftime('%Y%m%d-%H%M%S')}-{slug}.md"
@@ -40,6 +45,17 @@ def build_note_path(output_dir: Path, created_at: datetime, title: str) -> Path:
 
 def build_title_based_note_path(output_dir: Path, title: str) -> Path:
     slug = _bounded_slug(title)
+    filename = f"{slug}.md"
+    return _unique_path(output_dir / filename)
+
+
+def build_x_note_path(output_dir: Path, tweet_text: str, handle: str | None) -> Path:
+    prefix = _first_n_words(tweet_text, 5)
+    if handle:
+        filename_basis = f"{prefix} {handle}".strip()
+    else:
+        filename_basis = prefix
+    slug = _bounded_slug(filename_basis, fallback="x-post")
     filename = f"{slug}.md"
     return _unique_path(output_dir / filename)
 

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from obsidian_ai.models import MessagePayload, NoteDraft, SourceContext
-from obsidian_ai.renderer import build_title_based_note_path, render_note
+from obsidian_ai.renderer import build_title_based_note_path, build_x_note_path, render_note
 
 
 def test_render_x_post_uses_minimal_properties_and_body() -> None:
@@ -64,3 +64,12 @@ def test_build_title_based_note_path_clips_long_titles(tmp_path) -> None:
     path = build_title_based_note_path(tmp_path, long_title)
     assert len(path.name) < 150
     assert path.suffix == ".md"
+
+
+def test_build_x_note_path_uses_first_five_words_and_handle(tmp_path) -> None:
+    path = build_x_note_path(
+        tmp_path,
+        "just thought of a peanut butter vape and maybe more words",
+        "wineorexic",
+    )
+    assert path.name == "just-thought-of-a-peanut-wineorexic.md"
