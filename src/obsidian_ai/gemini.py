@@ -130,6 +130,9 @@ Return JSON only with this exact shape:
 Rules:
 - Generate only topical or organizational tags.
 - Do not include generic source tags like x, tweet, or the author's username; those are added separately.
+- Prefer broader category or intent tags over literal object words from the post.
+- If the post is intended to be humorous, absurd, or a joke, include the tag "funny".
+- Avoid low-signal noun tags copied directly from the tweet unless they clearly represent the broader category.
 - Be concise and factual.
 - Do not invent details not present in the source.
 

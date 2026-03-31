@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from obsidian_ai.models import MessagePayload, NoteDraft, SourceContext
-from obsidian_ai.renderer import render_note
+from obsidian_ai.renderer import build_title_based_note_path, render_note
 
 
 def test_render_x_post_uses_minimal_properties_and_body() -> None:
@@ -49,3 +49,8 @@ def test_render_x_post_uses_minimal_properties_and_body() -> None:
     assert "## Tags" not in rendered
     assert "## Metadata" not in rendered
     assert 'title: "' not in rendered
+
+
+def test_build_title_based_note_path_uses_title_slug(tmp_path) -> None:
+    path = build_title_based_note_path(tmp_path, "just thought of a peanut butter vape")
+    assert path.name == "just-thought-of-a-peanut-butter-vape.md"

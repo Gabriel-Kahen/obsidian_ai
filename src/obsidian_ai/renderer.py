@@ -30,6 +30,12 @@ def build_note_path(output_dir: Path, created_at: datetime, title: str) -> Path:
     return _unique_path(output_dir / filename)
 
 
+def build_title_based_note_path(output_dir: Path, title: str) -> Path:
+    slug = slugify(title)
+    filename = f"{slug}.md"
+    return _unique_path(output_dir / filename)
+
+
 def render_note(
     draft: NoteDraft,
     source: SourceContext,
