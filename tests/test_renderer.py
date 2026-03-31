@@ -48,7 +48,8 @@ def test_render_x_post_uses_minimal_properties_and_body() -> None:
     assert "  - gabek" in rendered
     assert "  - intrusive-thoughts" in rendered
     assert "# my note" not in rendered
-    assert rendered.startswith("tweet body\n\n---")
+    assert rendered.startswith("---\n")
+    assert rendered.rstrip().endswith("tweet body")
     assert "## Tags" not in rendered
     assert "## Metadata" not in rendered
     assert 'title: "' not in rendered

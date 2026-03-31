@@ -91,7 +91,9 @@ def render_note(
         frontmatter.append("---")
 
         body_text = (draft.body_markdown or source.x_post_text or source.description or "").strip()
-        sections = [body_text, "\n".join(frontmatter)] if body_text else ["\n".join(frontmatter)]
+        sections = ["\n".join(frontmatter)]
+        if body_text:
+            sections.append(body_text)
         return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
 
     frontmatter = [
