@@ -85,11 +85,11 @@ def build_note_path(output_dir: Path, source: SourceContext) -> Path:
 
 def render_note(draft: NoteDraft, source: SourceContext, message: MessagePayload) -> str:
     website = normalize_tags([source.site_name or "website"])
-    website_tag = f"#{website[0]}" if website else "#website"
+    website_value = website[0] if website else "website"
     frontmatter = [
         "---",
         f"link: {_yaml_escape(source.source_url or '')}",
-        f"website: {_yaml_escape(website_tag)}",
+        f"website: {_yaml_escape(website_value)}",
         f"saved: {_yaml_escape(message.created_at.isoformat())}",
         "tags:",
     ]

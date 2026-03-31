@@ -138,7 +138,8 @@ def build_note_path(output_dir: Path, source: SourceContext) -> Path:
 
 def render_note(draft: NoteDraft, source: SourceContext, message: MessagePayload) -> str:
     channel_tag = _channel_tag(source.site_name or "youtube")
-    tags = normalize_tags([channel_tag, *draft.tags, *message.user_tags])
+    generated_tags = [] if message.user_tags else draft.tags
+    tags = normalize_tags([channel_tag, *generated_tags, *message.user_tags])
     frontmatter = [
         "---",
         f"link: {_yaml_escape(source.source_url or '')}",
